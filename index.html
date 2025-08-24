@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asteroid Dodger - Enhanced</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #0c0c0c, #1a1a2e, #16213e);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Orbitron', 'Courier New', monospace;
+            color: white;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .game-container {
+            text-align: center;
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            max-width: 900px;
+            max-height: 700px;
+        }
+
+        canvas {
+            border: 3px solid;
+            border-image: linear-gradient(45deg, #00ffff, #ff00ff, #ffff00, #00ffff) 1;
+            background: radial-gradient(circle at 30% 30%, #001122, #000000);
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.5), inset 0 0 30px rgba(0, 0, 0, 0.8);
+            width: 100%;
+            height: 100%;
+        }
+
+        .ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .ui-item {
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(20, 20, 60, 0.9));
+            padding: 8px 15px;
+            border: 2px solid transparent;
+            border-radius: 15px;
+            background-clip: padding-box;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+            font-size: 14px;
+            font-weight: bold;
+            text-shadow: 0 0 10px currentColor;
+            animation: pulse 2s ease-in-out infinite alternate;
+        }
+
+        .score { color: #00ff00; border-color: #00ff00; }
+        .health { color: #ff4444; border-color: #ff4444; }
+        .level { color: #ffaa00; border-color: #ffaa00; }
+        .combo { color: #ff00ff; border-color: #ff00ff; }
+        .power { color: #00ffff; border-color: #00ffff; }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.05); }
+        }
+
+        .power-bar {
+            width: 100px;
+            height: 8px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 4px;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+
+        .power-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ffff, #ff00ff);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px currentColor;
+        }
+
+        .health-bar {
+            width: 100px;
+            height: 8px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 4px;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+
+        .health-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff4444, #ff8888);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .mobile-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            z-index: 15;
+        }
+
+        .joystick-container {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px solid #00ffff;
+            border-radius: 50%;
+            margin: 0 20px;
+        }
+
+        .joystick {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: #00ffff;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 15px #00ffff;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .action-btn {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #ff00ff, #8000ff);
+            border: 2px solid #ff00ff;
+            border-radius: 50%;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 20px rgba(255, 0, 255, 0.5);
+            user-select: none;
+        }
+
+        .action-btn:active {
+            transform: scale(0.9);
+        }
+
+        .game-over, .start-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.95), rgba(20, 20, 60, 0.95));
+            padding: 30px;
+            border: 3px solid;
+            border-image: linear-gradient(45deg, #00ffff, #ff00ff) 1;
+            border-radius: 20px;
+            text-align: center;
+            z-index: 20;
+            box-shadow: 0 0 50px rgba(0, 255, 255, 0.5);
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translate(-50%, -70%); }
+            to { opacity: 1; transform: translate(-50%, -50%); }
+        }
+
+        .achievements {
+            margin: 15px 0;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            border: 1px solid #ffaa00;
+        }
+
+        .achievement {
+            color: #ffaa00;
+            margin: 5px 0;
+            font-size: 12px;
+            text-shadow: 0 0 5px #ffaa00;
+        }
+
+        button {
+            background: linear-gradient(135deg, #00ffff, #0080ff);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            margin: 10px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: bold;
+            font-size: 16px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 25px rgba(0, 255, 255, 0.8);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .controls {
+            margin-top: 15px;
+            font-size: 12px;
+            color: #aaaaaa;
+            line-height: 1.5;
+        }
+
+        .notification {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #ff00ff, #8000ff);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 18px;
+            z-index: 30;
+            animation: notification 2s ease-out forwards;
+            pointer-events: none;
+            text-shadow: 0 0 10px white;
+            box-shadow: 0 0 30px rgba(255, 0, 255, 0.8);
+        }
+
+        @keyframes notification {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            10% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+            20% { transform: translate(-50%, -50%) scale(1); }
+            80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -70%) scale(0.8); }
+        }
+
+        .screen-flash {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 25;
+        }
+
+        @media (max-width: 768px) {
+            .mobile-controls {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .ui {
+                font-size: 12px;
+            }
+            
+            .ui-item {
+                padding: 6px 12px;
+            }
+            
+            .game-over, .start-screen {
+                padding: 20px;
+                max-width: 90vw;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .ui {
+                top: 5px;
+                left: 5px;
+                gap: 5px;
+            }
+            
+            .ui-item {
+                padding: 4px 8px;
+                font-size: 11px;
+            }
+            
+            .power-bar, .health-bar {
+                width: 80px;
+                height: 6px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="ui">
+            <div class="ui-item score">Score: <span id="score">0</span></div>
+            <div class="ui-item health">
+                Health: <span id="health">100</span>
+                <div class="health-bar">
+                    <div class="health-fill" id="healthFill"></div>
+                </div>
+            </div>
+            <div class="ui-item level">Level: <span id="level">1</span></div>
+            <div class="ui-item combo">Combo: <span id="combo">0</span>x</div>
+            <div class="ui-item power">
+                Power: <span id="power">0</span>%
+                <div class="power-bar">
+                    <div class="power-fill" id="powerFill"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mobile-controls">
+            <div class="joystick-container" id="joystick">
+                <div class="joystick" id="joystickKnob"></div>
+            </div>
+            <div class="action-buttons">
+                <div class="action-btn" id="boostBtn">🚀</div>
+                <div class="action-btn" id="powerBtn">⚡</div>
+            </div>
+        </div>
+
+        <div id="startScreen" class="start-screen">
+            <h1 style="background: linear-gradient(45deg, #00ffff, #ff00ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 2.5em; margin-bottom: 20px;">🚀 ASTEROID DODGER</h1>
+            <p>Navigate through the cosmic battlefield!</p>
+            <div class="controls">
+                <p><strong>Desktop Controls:</strong></p>
+                <p>WASD/Arrows - Move | Space - Boost | X - Power Blast</p>
+                <p><strong>Mobile:</strong> Use virtual joystick and buttons</p>
+                <p><br><strong>Power System:</strong></p>
+                <p>Destroy asteroids to build power (100% = screen-clearing blast!)</p>
+                <p>Chain destroys for combo multipliers!</p>
+            </div>
+            <button onclick="startGame()">🎮 START MISSION</button>
+        </div>
+
+        <div id="gameOverScreen" class="game-over" style="display: none;">
+            <h2>🔥 MISSION COMPLETE 🔥</h2>
+            <p>Final Score: <span id="finalScore">0</span></p>
+            <p>Level Reached: <span id="finalLevel">1</span></p>
+            <p>Max Combo: <span id="maxCombo">0</span>x</p>
+            <div class="achievements" id="achievements"></div>
+            <button onclick="restartGame()">🚀 RESTART MISSION</button>
+        </div>
+
+        <div class="screen-flash" id="screenFlash"></div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Responsive canvas
+        function resizeCanvas() {
+            const container = document.querySelector('.game-container');
+            const rect = container.getBoundingClientRect();
+            canvas.width = Math.min(900, rect.width - 20);
+            canvas.height = Math.min(700, rect.height - 20);
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Game state
+        let gameRunning = false;
+        let score = 0;
+        let health = 100;
+        let level = 1;
+        let gameSpeed = 2;
+        let powerCharge = 0;
+        let combo = 0;
+        let maxCombo = 0;
+        let lastComboTime = 0;
+        let achievements = [];
+
+        // Enhanced player object
+        const player = {
+            x: canvas.width / 2,
+            y: canvas.height - 80,
+            width: 25,
+            height: 35,
+            speed: 5,
+            boosting: false,
+            invulnerable: 0,
+            trail: []
+        };
+
+        // Game objects
+        let asteroids = [];
+        let particles = [];
+        let stars = [];
+        let powerBlasts = [];
+        let notifications = [];
+
+        // Input handling
+        const keys = {};
+        let joystickActive = false;
+        let joystickVector = { x: 0, y: 0 };
+
+        // Enhanced input system
+        document.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            if (e.key === ' ') {
+                e.preventDefault();
+                player.boosting = true;
+            }
+            if (e.key.toLowerCase() === 'x' && powerCharge >= 100) {
+                activatePowerBlast();
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+            if (e.key === ' ') {
+                player.boosting = false;
+            }
+        });
+
+        // Mobile controls
+        const joystick = document.getElementById('joystick');
+        const joystickKnob = document.getElementById('joystickKnob');
+        const boostBtn = document.getElementById('boostBtn');
+        const powerBtn = document.getElementById('powerBtn');
+
+        // Touch controls for joystick
+        let touchStarted = false;
+        
+        function handleJoystickMove(clientX, clientY) {
+            const rect = joystick.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            
+            let deltaX = clientX - centerX;
+            let deltaY = clientY - centerY;
+            
+            const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+            const maxDistance = 35;
+            
+            if (distance > maxDistance) {
+                deltaX = (deltaX / distance) * maxDistance;
+                deltaY = (deltaY / distance) * maxDistance;
+            }
+            
+            joystickKnob.style.transform = `translate(calc(-50% + ${deltaX}px), calc(-50% + ${deltaY}px))`;
+            
+            joystickVector.x = deltaX / maxDistance;
+            joystickVector.y = deltaY / maxDistance;
+        }
+
+        joystick.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            touchStarted = true;
+            const touch = e.touches[0];
+            handleJoystickMove(touch.clientX, touch.clientY);
+        });
+
+        joystick.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (touchStarted) {
+                const touch = e.touches[0];
+                handleJoystickMove(touch.clientX, touch.clientY);
+            }
+        });
+
+        joystick.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            touchStarted = false;
+            joystickKnob.style.transform = 'translate(-50%, -50%)';
+            joystickVector.x = 0;
+            joystickVector.y = 0;
+        });
+
+        // Action buttons
+        boostBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            player.boosting = true;
+        });
+
+        boostBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            player.boosting = false;
+        });
+
+        powerBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (powerCharge >= 100) {
+                activatePowerBlast();
+            }
+        });
+
+        // Initialize enhanced stars
+        function createStars() {
+            stars = [];
+            for (let i = 0; i < 150; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: Math.random() * 2 + 0.5,
+                    speed: Math.random() * 1 + 0.2,
+                    twinkle: Math.random() * 100,
+                    color: `hsl(${180 + Math.random() * 60}, 100%, ${60 + Math.random() * 40}%)`
+                });
+            }
+        }
+
+        // Enhanced drawing functions
+        function drawPlayer() {
+            // Add trail effect
+            player.trail.push({ x: player.x + player.width/2, y: player.y + player.height/2 });
+            if (player.trail.length > 8) player.trail.shift();
+
+            // Draw trail
+            ctx.globalAlpha = 0.3;
+            for (let i = 0; i < player.trail.length - 1; i++) {
+                const alpha = i / player.trail.length;
+                ctx.globalAlpha = alpha * 0.3;
+                ctx.strokeStyle = player.boosting ? '#ff4444' : '#00ffff';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(player.trail[i].x, player.trail[i].y);
+                ctx.lineTo(player.trail[i + 1].x, player.trail[i + 1].y);
+                ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+
+            ctx.save();
+            ctx.translate(player.x + player.width/2, player.y + player.height/2);
+            
+            // Invulnerability effect
+            if (player.invulnerable > 0) {
+                ctx.globalAlpha = 0.5 + Math.sin(Date.now() * 0.02) * 0.3;
+            }
+            
+            // Enhanced boost effect
+            if (player.boosting) {
+                ctx.fillStyle = '#ff4444';
+                for (let i = 0; i < 3; i++) {
+                    ctx.globalAlpha = 0.8 - i * 0.2;
+                    ctx.fillRect(-player.width/2 + i, player.height/2 - 5 + i, player.width - i * 2, 15 + i * 2);
+                }
+                ctx.globalAlpha = 1;
+            }
+            
+            // Enhanced ship design
+            const gradient = ctx.createLinearGradient(0, -player.height/2, 0, player.height/2);
+            gradient.addColorStop(0, '#00ffff');
+            gradient.addColorStop(0.5, '#ffffff');
+            gradient.addColorStop(1, '#0080ff');
+            
+            ctx.fillStyle = gradient;
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            
+            ctx.beginPath();
+            ctx.moveTo(0, -player.height/2);
+            ctx.lineTo(-player.width/2, player.height/2);
+            ctx.lineTo(-5, player.height/2 - 8);
+            ctx.lineTo(5, player.height/2 - 8);
+            ctx.lineTo(player.width/2, player.height/2);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            
+            // Ship details with glow
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#00ffff';
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(-2, -8, 4, 10);
+            ctx.shadowBlur = 0;
+            
+            ctx.restore();
+        }
+
+        function drawAsteroid(asteroid) {
+            ctx.save();
+            ctx.translate(asteroid.x, asteroid.y);
+            ctx.rotate(asteroid.rotation);
+            
+            // Enhanced asteroid with glow
+            ctx.shadowBlur = 5;
+            ctx.shadowColor = asteroid.dangerous ? '#ff0000' : '#8B4513';
+            
+            const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, asteroid.size);
+            if (asteroid.dangerous) {
+                gradient.addColorStop(0, '#ff4444');
+                gradient.addColorStop(1, '#880000');
+            } else {
+                gradient.addColorStop(0, '#D2B48C');
+                gradient.addColorStop(1, '#8B4513');
+            }
+            
+            ctx.fillStyle = gradient;
+            ctx.strokeStyle = asteroid.dangerous ? '#ff6666' : '#A0522D';
+            ctx.lineWidth = 2;
+            
+            ctx.beginPath();
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                const radius = asteroid.size + Math.sin(angle * 3 + asteroid.rotation * 10) * 4;
+                const x = Math.cos(angle) * radius;
+                const y = Math.sin(angle) * radius;
+                
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            
+            ctx.shadowBlur = 0;
+            ctx.restore();
+        }
+
+        function drawStars() {
+            stars.forEach(star => {
+                const twinkle = Math.sin(star.twinkle + Date.now() * 0.005) * 0.5 + 0.5;
+                ctx.globalAlpha = twinkle;
+                ctx.fillStyle = star.color;
+                ctx.shadowBlur = 3;
+                ctx.shadowColor = star.color;
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            });
+            ctx.globalAlpha = 1;
+        }
+
+        function drawParticles() {
+            particles.forEach(particle => {
+                ctx.save();
+                ctx.globalAlpha = particle.life / particle.maxLife;
+                ctx.fillStyle = particle.color;
+                ctx.shadowBlur = 5;
+                ctx.shadowColor = particle.color;
+                ctx.beginPath();
+                ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.restore();
+            });
+        }
+
+        function drawPowerBlasts() {
+            powerBlasts.forEach(blast => {
+                ctx.save();
+                ctx.globalAlpha = blast.life / blast.maxLife;
+                
+                const gradient = ctx.createRadialGradient(blast.x, blast.y, 0, blast.x, blast.y, blast.radius);
+                gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+                gradient.addColorStop(0.3, 'rgba(0, 255, 255, 0.6)');
+                gradient.addColorStop(0.6, 'rgba(255, 0, 255, 0.4)');
+                gradient.addColorStop(1, 'rgba(255, 0, 255, 0)');
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(blast.x, blast.y, blast.radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.restore();
+            });
+        }
+
+        // Enhanced game logic
+        function updatePlayer() {
+            if (player.invulnerable > 0) player.invulnerable--;
+
+            // Enhanced movement with joystick support
+            let moveX = 0, moveY = 0;
+            
+            if (keys['a'] || keys['arrowleft'] || joystickVector.x < -0.3) {
+                moveX = -1;
+            }
+            if (keys['d'] || keys['arrowright'] || joystickVector.x > 0.3) {
+                moveX = 1;
+            }
+            if (keys['w'] || keys['arrowup'] || joystickVector.y < -0.3) {
+                moveY = -1;
+            }
+            if (keys['s'] || keys['arrowdown'] || joystickVector.y > 0.3) {
+                moveY = 1;
+            }
+
+            // Apply movement with boundaries
+            const speed = player.boosting ? 8 : 5;
+            player.x = Math.max(0, Math.min(canvas.width - player.width, player.x + moveX * speed));
+            player.y = Math.max(0, Math.min(canvas.height - player.height, player.y + moveY * speed));
+            
+            // Enhanced boost particles
+            if (player.boosting) {
+                for (let i = 0; i < 3; i++) {
+                    particles.push({
+                        x: player.x + player.width/2 + (Math.random() - 0.5) * player.width,
+                        y: player.y + player.height,
+                        vx: (Math.random() - 0.5) * 4,
+                        vy: Math.random() * 5 + 3,
+                        size: Math.random() * 4 + 2,
+                        color: `hsl(${Math.random() * 60}, 100%, 60%)`,
+                        life: 20,
+                        maxLife: 20
+                    });
+                }
+            }
+        }
+
+        function updateAsteroids() {
+            // Enhanced asteroid movement and spawning
+            for (let i = asteroids.length - 1; i >= 0; i--) {
+                const asteroid = asteroids[i];
+                asteroid.y += asteroid.speed;
+                asteroid.rotation += asteroid.rotationSpeed;
+                
+                // Enhanced movement patterns
+                if (asteroid.pattern === 'wave') {
+                    asteroid.x += Math.sin(asteroid.y * 0.01) * 2;
+                }
+                
+                if (asteroid.y > canvas.height + asteroid.size) {
+                    asteroids.splice(i, 1);
+                    score += 10;
+                    powerCharge = Math.min(100, powerCharge + 2);
+                }
+            }
+            
+            // Enhanced spawning with different types
+            const spawnRate = 0.015 + level * 0.008;
+            if (Math.random() < spawnRate) {
+                const dangerous = Math.random() < 0.2 + level * 0.05;
+                const size = dangerous ? Math.random() * 10 + 20 : Math.random() * 15 + 10;
+                
+                asteroids.push({
+                    x: Math.random() * (canvas.width - size * 2) + size,
+                    y: -size,
+                    size: size,
+                    speed: gameSpeed + Math.random() * 3 + (dangerous ? 1 : 0),
+                    rotation: 0,
+                    rotationSpeed: (Math.random() - 0.5) * 0.15,
+                    dangerous: dangerous,
+                    pattern: Math.random() < 0.3 ? 'wave' : 'straight'
+                });
+            }
+        }
+
+        function updateStars() {
+            stars.forEach(star => {
+                star.y += star.speed;
+                star.twinkle += 2;
+                if (star.y > canvas.height) {
+                    star.y = -5;
+                    star.x = Math.random() * canvas.width;
+                }
+            });
+        }
+
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const particle = particles[i];
+                particle.x += particle.vx;
+                particle.y += particle.vy;
+                particle.life--;
+                particle.vx *= 0.98;
+                particle.vy *= 0.98;
+                
+                if (particle.life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        function updatePowerBlasts() {
+            for (let i = powerBlasts.length - 1; i >= 0; i--) {
+                const blast = powerBlasts[i];
+                blast.radius += blast.speed;
+                blast.life--;
+                
+                if (blast.life <= 0) {
+                    powerBlasts.splice(i, 1);
+                }
+            }
+        }
+
+        function activatePowerBlast() {
+            if (powerCharge < 100) return;
+            
+            powerCharge = 0;
+            
+            // Create screen-clearing blast
+            powerBlasts.push({
+                x: player.x + player.width/2,
+                y: player.y + player.height/2,
+                radius: 0,
+                speed: 15,
+                life: 60,
+                maxLife: 60
+            });
+            
+            // Screen flash effect
+            flashScreen('#ffffff', 0.3, 200);
+            
+            // Destroy all asteroids in blast
+            setTimeout(() => {
+                let destroyedCount = 0;
+                for (let i = asteroids.length - 1; i >= 0; i--) {
+                    const asteroid = asteroids[i];
+                    const blast = powerBlasts[powerBlasts.length - 1];
+                    if (blast) {
+                        const dist = Math.sqrt((asteroid.x - blast.x) ** 2 + (asteroid.y - blast.y) ** 2);
+                        if (dist <= blast.radius) {
+                            createExplosion(asteroid.x, asteroid.y, asteroid.dangerous);
+                            asteroids.splice(i, 1);
+                            destroyedCount++;
+                            score += asteroid.dangerous ? 50 : 25;
+                        }
+                    }
+                }
+                
+                if (destroyedCount > 0) {
+                    combo += destroyedCount;
+                    showNotification(`POWER BLAST! +${destroyedCount} DESTROYED!`);
+                    if (destroyedCount >= 5) {
+                        showNotification("AMAZING CLEAR! BONUS POINTS!");
+                        score += destroyedCount * 10;
+                    }
+                }
+            }, 100);
+        }
+
+        function createExplosion(x, y, dangerous = false) {
+            const particleCount = dangerous ? 15 : 10;
+            const colors = dangerous ? ['#ff0000', '#ff4444', '#ffaa00'] : ['#ffaa00', '#ffffff', '#00ffff'];
+            
+            for (let i = 0; i < particleCount; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 12,
+                    vy: (Math.random() - 0.5) * 12,
+                    size: Math.random() * 5 + 3,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    life: 40,
+                    maxLife: 40
+                });
+            }
+        }
+
+        function checkCollisions() {
+            // Player-asteroid collisions
+            if (player.invulnerable <= 0) {
+                for (let i = asteroids.length - 1; i >= 0; i--) {
+                    const asteroid = asteroids[i];
+                    
+                    const dist = Math.sqrt((player.x + player.width/2 - asteroid.x) ** 2 + (player.y + player.height/2 - asteroid.y) ** 2);
+                    if (dist <= asteroid.size + 15) {
+                        // Collision detected
+                        const damage = asteroid.dangerous ? 35 : 20;
+                        health -= damage;
+                        asteroids.splice(i, 1);
+                        player.invulnerable = 120; // 2 seconds at 60fps
+                        
+                        createExplosion(asteroid.x, asteroid.y, asteroid.dangerous);
+                        flashScreen('#ff0000', 0.5, 300);
+                        
+                        // Reset combo on hit
+                        if (combo > 0) {
+                            showNotification(`COMBO BROKEN! ${combo}x LOST`);
+                            combo = 0;
+                        }
+                        
+                        if (health <= 0) {
+                            endGame();
+                        }
+                        break;
+                    }
+                }
+            }
+            
+            // Power blast collisions
+            powerBlasts.forEach(blast => {
+                for (let i = asteroids.length - 1; i >= 0; i--) {
+                    const asteroid = asteroids[i];
+                    const dist = Math.sqrt((asteroid.x - blast.x) ** 2 + (asteroid.y - blast.y) ** 2);
+                    
+                    if (dist <= blast.radius) {
+                        createExplosion(asteroid.x, asteroid.y, asteroid.dangerous);
+                        asteroids.splice(i, 1);
+                        score += asteroid.dangerous ? 50 : 25;
+                        combo++;
+                    }
+                }
+            });
+            
+            // Update combo timer
+            if (combo > 0 && Date.now() - lastComboTime > 3000) {
+                if (combo > maxCombo) maxCombo = combo;
+                showNotification(`${combo}x COMBO COMPLETE! +${combo * 10} BONUS!`);
+                score += combo * 10;
+                combo = 0;
+            }
+        }
+
+        function updateGame() {
+            // Enhanced difficulty progression
+            level = Math.floor(score / 800) + 1;
+            gameSpeed = 2.5 + (level - 1) * 0.7;
+            
+            // Combo decay
+            if (combo > 0 && Date.now() - lastComboTime > 2000) {
+                lastComboTime = Date.now();
+            }
+            
+            // Update UI with enhanced effects
+            document.getElementById('score').textContent = score.toLocaleString();
+            document.getElementById('health').textContent = health;
+            document.getElementById('level').textContent = level;
+            document.getElementById('combo').textContent = combo;
+            document.getElementById('power').textContent = Math.floor(powerCharge);
+            
+            // Update progress bars
+            const healthPercent = Math.max(0, health);
+            const powerPercent = powerCharge;
+            
+            document.getElementById('healthFill').style.width = `${healthPercent}%`;
+            document.getElementById('powerFill').style.width = `${powerPercent}%`;
+            
+            // Change health bar color based on health
+            const healthFill = document.getElementById('healthFill');
+            if (health < 30) {
+                healthFill.style.background = 'linear-gradient(90deg, #ff0000, #ff4444)';
+            } else if (health < 60) {
+                healthFill.style.background = 'linear-gradient(90deg, #ffaa00, #ffdd00)';
+            } else {
+                healthFill.style.background = 'linear-gradient(90deg, #00ff00, #44ff44)';
+            }
+            
+            // Achievement system
+            checkAchievements();
+        }
+
+        function checkAchievements() {
+            if (score >= 1000 && !achievements.includes('First Thousand')) {
+                achievements.push('First Thousand');
+                showNotification('🏆 FIRST THOUSAND!');
+            }
+            if (combo >= 10 && !achievements.includes('Combo Master')) {
+                achievements.push('Combo Master');
+                showNotification('🏆 COMBO MASTER!');
+            }
+            if (level >= 5 && !achievements.includes('Deep Space')) {
+                achievements.push('Deep Space');
+                showNotification('🏆 DEEP SPACE EXPLORER!');
+            }
+            if (score >= 5000 && !achievements.includes('High Scorer')) {
+                achievements.push('High Scorer');
+                showNotification('🏆 HIGH SCORER!');
+            }
+        }
+
+        function showNotification(text) {
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.textContent = text;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                document.body.removeChild(notification);
+            }, 2000);
+        }
+
+        function flashScreen(color, intensity, duration) {
+            const flash = document.getElementById('screenFlash');
+            flash.style.background = color;
+            flash.style.opacity = intensity;
+            flash.style.display = 'block';
+            
+            setTimeout(() => {
+                flash.style.opacity = '0';
+                setTimeout(() => {
+                    flash.style.display = 'none';
+                }, 200);
+            }, duration);
+        }
+
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            // Clear canvas with enhanced background
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#000011');
+            gradient.addColorStop(0.5, '#001122');
+            gradient.addColorStop(1, '#000000');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Update game objects
+            updateStars();
+            updatePlayer();
+            updateAsteroids();
+            updateParticles();
+            updatePowerBlasts();
+            checkCollisions();
+            updateGame();
+            
+            // Draw everything with enhanced effects
+            drawStars();
+            drawPowerBlasts();
+            drawPlayer();
+            asteroids.forEach(drawAsteroid);
+            drawParticles();
+            
+            // Screen shake effect when low health
+            if (health < 30 && health > 0) {
+                const shake = Math.sin(Date.now() * 0.1) * 2;
+                ctx.translate(shake, shake);
+            }
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        function startGame() {
+            gameRunning = true;
+            score = 0;
+            health = 100;
+            level = 1;
+            gameSpeed = 2.5;
+            asteroids = [];
+            particles = [];
+            powerBlasts = [];
+            powerCharge = 0;
+            combo = 0;
+            achievements = [];
+            
+            player.x = canvas.width / 2 - player.width / 2;
+            player.y = canvas.height - 80;
+            player.invulnerable = 0;
+            player.trail = [];
+            
+            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('gameOverScreen').style.display = 'none';
+            
+            createStars();
+            showNotification('MISSION STARTED! GOOD LUCK!');
+            gameLoop();
+        }
+
+        function endGame() {
+            gameRunning = false;
+            document.getElementById('finalScore').textContent = score.toLocaleString();
+            document.getElementById('finalLevel').textContent = level;
+            document.getElementById('maxCombo').textContent = maxCombo;
+            
+            // Display achievements
+            const achievementsDiv = document.getElementById('achievements');
+            if (achievements.length > 0) {
+                achievementsDiv.innerHTML = '<h3>🏆 Achievements Unlocked:</h3>' + 
+                    achievements.map(a => `<div class="achievement">• ${a}</div>`).join('');
+            } else {
+                achievementsDiv.innerHTML = '<div class="achievement">No achievements this time - try again!</div>';
+            }
+            
+            document.getElementById('gameOverScreen').style.display = 'block';
+            
+            // Dopamine-triggering final explosion
+            for (let i = 0; i < 50; i++) {
+                setTimeout(() => {
+                    particles.push({
+                        x: Math.random() * canvas.width,
+                        y: Math.random() * canvas.height,
+                        vx: (Math.random() - 0.5) * 10,
+                        vy: (Math.random() - 0.5) * 10,
+                        size: Math.random() * 8 + 4,
+                        color: `hsl(${Math.random() * 360}, 100%, 60%)`,
+                        life: 100,
+                        maxLife: 100
+                    });
+                }, i * 20);
+            }
+        }
+
+        function restartGame() {
+            startGame();
+        }
+
+        // Initialize enhanced game
+        createStars();
+        
+        // Performance optimization
+        let lastTime = 0;
+        function optimizedGameLoop(currentTime) {
+            if (currentTime - lastTime >= 16.67) { // 60 FPS cap
+                gameLoop();
+                lastTime = currentTime;
+            }
+            if (gameRunning) {
+                requestAnimationFrame(optimizedGameLoop);
+            }
+        }
+
+        // Mobile device detection
+        if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+            document.querySelector('.mobile-controls').style.display = 'flex';
+        }
+    </script>
+</body>
+</html>
